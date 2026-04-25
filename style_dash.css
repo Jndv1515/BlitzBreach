@@ -1,0 +1,133 @@
+/* style_dash.css */
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body {
+    background-color: #05080a;
+    color: #00d4ff;
+    overflow-x: hidden;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+    background: rgba(0, 212, 255, 0.02);
+}
+
+.logo { font-weight: bold; letter-spacing: 3px; font-size: 1.2rem; }
+.user-info span { color: #fff; }
+header a { color: #ff4b2b; text-decoration: none; font-size: 0.8rem; }
+
+h2 { text-align: center; margin: 40px 0; letter-spacing: 10px; font-size: 1rem; color: #448899; }
+
+/* Level Cards */
+.card-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 0 50px;
+}
+
+.level-card {
+    background: rgba(0, 212, 255, 0.05);
+    border: 2px solid #00d4ff;
+    width: 250px;
+    height: 300px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.level-card:hover {
+    background: #00d4ff;
+    color: #000;
+    transform: translateY(-10px);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+}
+
+.level-num { font-size: 3rem; font-weight: bold; }
+.level-title { font-size: 1rem; letter-spacing: 2px; }
+.level-status { font-size: 0.7rem; border-top: 1px solid currentColor; padding-top: 10px; }
+
+/* Locked State */
+.level-card.locked {
+    border-color: #333;
+    color: #333;
+    cursor: not-allowed;
+}
+
+/* Countdown Overlay */
+#overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 8, 10, 0.95);
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#countdown-text {
+    font-size: 10rem;
+    font-weight: bold;
+    color: #00d4ff;
+    text-shadow: 0 0 50px rgba(0, 212, 255, 0.8);
+}
+.level-card.locked {
+    border-color: #222;
+    color: #444;
+    cursor: not-allowed;
+    background: rgba(255, 0, 0, 0.02);
+    pointer-events: none; /* Prevents clicking */
+}
+
+.level-card.locked:hover {
+    transform: none;
+    box-shadow: none;
+}
+.level-card {
+    background: rgba(0, 212, 255, 0.05); /* Very light blue */
+    backdrop-filter: blur(10px); /* Blurs the background behind it */
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 0px; /* Square edges look more "System-like" */
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+.level-card:hover {
+    border-color: #00d4ff;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+    transform: translateY(-5px);
+}
+.logo:hover {
+    text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
+    animation: glitch 0.3s infinite;
+}
+
+@keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 9999;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none; /* Crucial: lets you click through it */
+}
