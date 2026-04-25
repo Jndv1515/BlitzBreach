@@ -7,21 +7,24 @@ if (!isset($_SESSION['user_id'])) {
 
 $uid = $_SESSION['user_id'];
 
-// 1. RANKINGS QUERY
-$leaderboard_res = mysqli_query($conn, "
-    SELECT u.username, MIN(l.time_taken) as best_time 
-    FROM leaderboard l
-    JOIN users u ON l.user_id = u.id 
-    GROUP BY u.id 
-    ORDER BY best_time ASC 
-    LIMIT 5
-");
-
-// 2. COMPLETED LEVELS CHECK
+// 1. Level Completion Check
 $unlocked_res = mysqli_query($conn, "SELECT DISTINCT level_id FROM leaderboard WHERE user_id = '$uid'");
 $completed_levels = [];
 while ($row = mysqli_fetch_assoc($unlocked_res)) {
     $completed_levels[] = (int)$row['level_id'];
+}
+
+// 2. Ranking Fetcher Function
+function fetchTopFive($conn, $lvl)
+{
+    return mysqli_query($conn, "
+        SELECT u.username, l.time_taken 
+        FROM leaderboard l
+        JOIN users u ON l.user_id = u.id 
+        WHERE l.level_id = $lvl
+        ORDER BY l.time_taken ASC 
+        LIMIT 5
+    ");
 }
 ?>
 <!DOCTYPE html>
@@ -54,7 +57,7 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             overflow: hidden;
         }
 
-        /* 📺 Retro Scanline Effect */
+        /* Background Effects */
         body::before {
             content: " ";
             display: block;
@@ -99,37 +102,32 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             align-items: center;
         }
 
-        /* Wide Branding Header */
-        .branding {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
         .branding h1 {
             font-size: 3.5rem;
             letter-spacing: 25px;
             text-transform: uppercase;
             text-shadow: 0 0 20px var(--cyan);
+            margin-bottom: 40px;
         }
 
-        /* Mission Selection Grid */
+        /* Missions */
         .mission-grid {
             display: flex;
             gap: 30px;
             justify-content: center;
             width: 100%;
-            margin-bottom: 30px;
+            margin-bottom: 50px;
         }
 
         .mission-card {
             width: 280px;
             border: 1px solid var(--cyan);
             padding: 20px;
-            background: rgba(0, 255, 204, 0.02);
             text-align: center;
             text-decoration: none;
             color: var(--cyan);
             transition: 0.2s;
+            background: rgba(0, 255, 204, 0.02);
         }
 
         .mission-card:hover:not(.locked) {
@@ -145,28 +143,11 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 255, 204, 0.05);
         }
 
         .mission-icon {
             width: 65%;
-            height: auto;
             filter: drop-shadow(0 0 8px var(--cyan));
-        }
-
-        .mission-title {
-            font-weight: bold;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            border-bottom: 1px solid var(--dark-cyan);
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-
-        .mission-status {
-            font-size: 0.7rem;
-            letter-spacing: 2px;
-            opacity: 0.8;
         }
 
         .locked {
@@ -176,31 +157,59 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             border-style: dashed;
         }
 
-        /* Rankings HUD */
-        .rankings-container {
+        /* --- RANKING OVERLAY STYLE --- */
+        #rank-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 500px;
-            border: 1px solid var(--dark-cyan);
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.4);
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 5000;
+            justify-content: center;
+            align-items: center;
         }
 
-        .rankings-title {
-            font-size: 0.8rem;
-            letter-spacing: 4px;
-            margin-bottom: 15px;
+        .rank-window {
+            width: 700px;
+            border: 1px solid var(--cyan);
+            background: #000;
+            padding: 30px;
+        }
+
+        .rank-category-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .rank-column {
+            flex: 1;
+            border: 1px solid var(--dark-cyan);
+            padding: 15px;
+            background: rgba(0, 255, 204, 0.02);
+        }
+
+        .column-title {
+            font-size: 0.7rem;
             border-bottom: 1px solid var(--dark-cyan);
+            margin-bottom: 10px;
             padding-bottom: 5px;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            text-align: center;
         }
 
         .rank-row {
             display: flex;
             justify-content: space-between;
-            font-size: 0.8rem;
-            margin-bottom: 5px;
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+            opacity: 0.8;
         }
 
-        /* Footer HUD */
+        /* Footer */
         .ui-footer {
             border-top: 1px solid var(--cyan);
             padding: 10px 20px;
@@ -208,13 +217,6 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             justify-content: space-between;
             font-size: 0.7rem;
             align-items: center;
-        }
-
-        .footer-left,
-        .footer-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
         }
 
         .footer-center {
@@ -231,7 +233,6 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             text-transform: uppercase;
             background: transparent;
             font-size: 0.65rem;
-            transition: 0.2s;
         }
 
         .btn-footer:hover {
@@ -254,41 +255,6 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
             background: var(--cyan);
             cursor: pointer;
         }
-
-        #loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .processing-box {
-            border: 1px solid var(--cyan);
-            background: #000;
-            padding: 20px;
-            width: 400px;
-            text-align: center;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 10px;
-            border: 1px solid var(--cyan);
-            margin-top: 15px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--cyan);
-            width: 0%;
-            transition: width 0.1s;
-        }
     </style>
 </head>
 
@@ -297,12 +263,34 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
         <source src="bgm/adrenaline.mp3" type="audio/mpeg">
     </audio>
 
-    <div id="loading-overlay">
-        <div class="processing-box">
-            <div style="font-size: 0.8rem; margin-bottom: 5px; border-bottom: 1px solid var(--cyan);">NODE_INITIALIZATION</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="fill"></div>
+    <div id="rank-overlay">
+        <div class="rank-window">
+            <h2 style="text-align:center; letter-spacing: 10px;">GLOBAL_RANKINGS</h2>
+
+            <div class="rank-category-container">
+                <?php
+                $levels = ["RECON_INIT", "PRICE_MOD", "CARD_RIGGING"];
+                for ($i = 1; $i <= 3; $i++):
+                    $data = fetchTopFive($conn, $i);
+                ?>
+                    <div class="rank-column">
+                        <div class="column-title">LEVEL_0<?php echo $i; ?><br><?php echo $levels[$i - 1]; ?></div>
+                        <?php if (mysqli_num_rows($data) > 0): $r = 1; ?>
+                            <?php while ($row = mysqli_fetch_assoc($data)): ?>
+                                <div class="rank-row">
+                                    <span><?php echo $r; ?>. <?php echo htmlspecialchars($row['username']); ?></span>
+                                    <span><?php echo number_format($row['time_taken'], 2); ?>s</span>
+                                </div>
+                            <?php $r++;
+                            endwhile; ?>
+                        <?php else: ?>
+                            <div style="font-size:0.6rem; opacity:0.4; text-align:center;">NO_DATA</div>
+                        <?php endif; ?>
+                    </div>
+                <?php endfor; ?>
             </div>
+
+            <button class="btn-footer" style="width:100%; margin-top:30px;" onclick="toggleRankings()">CLOSE_RANKINGS</button>
         </div>
     </div>
 
@@ -323,71 +311,47 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
                     <div class="mission-title">RECON_INIT</div>
                     <div class="mission-status"><?php echo in_array(1, $completed_levels) ? '[ COMPLETED ]' : '[ AVAILABLE ]'; ?></div>
                 </a>
-
-                <?php $l2_u = in_array(1, $completed_levels); ?>
-                <a href="javascript:void(0)" class="mission-card <?php echo !$l2_u ? 'locked' : ''; ?>" onclick="<?php echo $l2_u ? "initNode('level2.php')" : ""; ?>">
+                <a href="javascript:void(0)" class="mission-card <?php echo !in_array(1, $completed_levels) ? 'locked' : ''; ?>" onclick="<?php echo in_array(1, $completed_levels) ? "initNode('level2.php')" : ""; ?>">
                     <div class="mission-icon-box"><img src="icons/currency.png" class="mission-icon"></div>
                     <div class="mission-title">PRICE_MOD</div>
-                    <div class="mission-status"><?php echo in_array(2, $completed_levels) ? '[ COMPLETED ]' : ($l2_u ? '[ UNLOCKED ]' : '[ ENCRYPTED ]'); ?></div>
+                    <div class="mission-status"><?php echo in_array(2, $completed_levels) ? '[ COMPLETED ]' : (in_array(1, $completed_levels) ? '[ UNLOCKED ]' : '[ ENCRYPTED ]'); ?></div>
                 </a>
-
-                <?php $l3_u = in_array(2, $completed_levels); ?>
-                <a href="javascript:void(0)" class="mission-card <?php echo !$l3_u ? 'locked' : ''; ?>" onclick="<?php echo $l3_u ? "initNode('level3.php')" : ""; ?>">
+                <a href="javascript:void(0)" class="mission-card <?php echo !in_array(2, $completed_levels) ? 'locked' : ''; ?>" onclick="<?php echo in_array(2, $completed_levels) ? "initNode('level3.php')" : ""; ?>">
                     <div class="mission-icon-box"><img src="icons/card.png" class="mission-icon"></div>
                     <div class="mission-title">CARD_RIGGING</div>
-                    <div class="mission-status"><?php echo in_array(3, $completed_levels) ? '[ COMPLETED ]' : ($l3_u ? '[ UNLOCKED ]' : '[ ENCRYPTED ]'); ?></div>
+                    <div class="mission-status"><?php echo in_array(3, $completed_levels) ? '[ COMPLETED ]' : (in_array(2, $completed_levels) ? '[ UNLOCKED ]' : '[ ENCRYPTED ]'); ?></div>
                 </a>
             </div>
 
-            <div class="rankings-container">
-                <div class="rankings-title">TOP_OPERATIVES_RANKING</div>
-                <?php if ($leaderboard_res && mysqli_num_rows($leaderboard_res) > 0): ?>
-                    <?php $rank = 1;
-                    while ($row = mysqli_fetch_assoc($leaderboard_res)): ?>
-                        <div class="rank-row">
-                            <span><?php echo $rank . ". " . htmlspecialchars($row['username']); ?></span>
-                            <span><?php echo number_format($row['best_time'], 2); ?>s</span>
-                        </div>
-                    <?php $rank++;
-                    endwhile; ?>
-                <?php else: ?>
-                    <div style="font-size: 0.7rem; opacity: 0.5;">NO_RANKING_DATA_FOUND</div>
-                <?php endif; ?>
-            </div>
+            <button class="btn-footer" style="padding: 15px 40px; font-size: 0.9rem;" onclick="toggleRankings()">ACCESS_GLOBAL_RANKINGS</button>
         </div>
 
         <div class="ui-footer">
-            <div class="footer-left">
-                <div>OPERATOR: <?php echo strtoupper($_SESSION['username']); ?></div>
-            </div>
-
+            <div>OPERATOR: <?php echo strtoupper($_SESSION['username']); ?></div>
             <div class="footer-center">
                 <span style="font-size: 0.6rem;">VOL:</span>
                 <input type="range" class="volume-slider" id="vol-slider" min="0" max="1" step="0.1" value="0.5">
                 <button id="audio-ctrl" class="btn-footer" onclick="toggleAudio()">AUDIO: OFF</button>
             </div>
-
-            <div class="footer-right">
-                <div>SYS_NODES: 3/3 | LEVEL_04: [PURGED]</div>
-            </div>
+            <div>SYS_NODES: 3/3 | LEVEL_04: [PURGED]</div>
         </div>
     </div>
 
     <script>
+        // Audio Logic
         const music = document.getElementById('bg-music');
         const audioBtn = document.getElementById('audio-ctrl');
         const volSlider = document.getElementById('vol-slider');
-
         music.volume = 0.5;
 
-        // Auto-unlock audio on first click
-        const startMusic = () => {
-            music.play().then(() => {
+        document.addEventListener('click', () => {
+            if (music.paused) {
+                music.play();
                 audioBtn.innerText = "AUDIO: ON";
-                document.removeEventListener('click', startMusic);
-            }).catch(e => console.log("Waiting for user handshake..."));
-        };
-        document.addEventListener('click', startMusic);
+            }
+        }, {
+            once: true
+        });
 
         function toggleAudio() {
             if (music.paused) {
@@ -398,26 +362,19 @@ while ($row = mysqli_fetch_assoc($unlocked_res)) {
                 audioBtn.innerText = "AUDIO: OFF";
             }
         }
-
-        volSlider.addEventListener('input', (e) => {
+        volSlider.oninput = (e) => {
             music.volume = e.target.value;
-        });
+        };
+
+        // Rankings Toggle
+        function toggleRankings() {
+            const overlay = document.getElementById('rank-overlay');
+            overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
+        }
 
         function initNode(url) {
-            const overlay = document.getElementById('loading-overlay');
-            const fill = document.getElementById('fill');
-            overlay.style.display = 'flex';
-            let width = 0;
-            let interval = setInterval(() => {
-                if (width >= 100) {
-                    clearInterval(interval);
-                    window.location.href = url;
-                } else {
-                    width += Math.random() * 20;
-                    if (width > 100) width = 100;
-                    fill.style.width = width + '%';
-                }
-            }, 100);
+            /* Your loading sequence logic here */
+            window.location.href = url;
         }
     </script>
 </body>
